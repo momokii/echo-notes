@@ -1,0 +1,355 @@
+{{ template "components/_header-dashboard" . }}
+<body style="height: auto;">
+    <div class="container py-3">
+        <div class="recorder-container">
+            <div class="text-center mb-4">
+                <h1 class="display-5 fw-bold">Echo Notes</h1>
+                <p class="text-muted">Record your meetings effortlessly and let us generate a comprehensive summary for you. Capture every detail without missing a beat!</p>
+            </div>
+            
+            <div class="waveform bg-light">
+                <!-- Ini akan menjadi placeholder untuk visualisasi suara -->
+                <div class="d-flex justify-content-center align-items-center h-100">
+                    <p class="text-muted mb-0" id="status-text">Ready to record</p>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-center align-items-center my-4">
+                <div class="recording-indicator" id="recordingIndicator"></div>
+                <div class="timer-display" id="timer">00:00</div>
+            </div>
+            
+            <div class="controls d-flex flex-wrap justify-content-center gap-3">
+                <button class="btn btn-danger" id="recordButton" title="Rekam">Record</button>
+                <button class="btn btn-primary" id="playButton" disabled title="Play">Play</button>
+                <button class="btn btn-success" id="downloadButton" disabled title="Unduh">Download</button>
+            </div>
+            
+            <div class="mt-4">
+                <audio id="audioPlayer" class="w-100" controls></audio>
+            </div>
+            
+            <div class="mt-4 text-center">
+                <p class="small text-muted">
+                    <i class="fas fa-info-circle"></i> 
+                    File format: WEBM | Allow microphone access to record
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-5 text-center text-muted">
+            <p>&copy; 2025 Kelana Chandra Helyandika. All rights reserved.</p>
+        </footer>
+    </div>
+
+
+    {{ template "components/_footer-script" . }}
+    {{ template "components/_loading" . }}
+    {{ template "components/_modal-infor" . }}
+    <!-- TODO FIX THIS -->
+    <!-- !
+    * masalah masih ada adalah
+    * Last chunk tetap pasti di proses, cuma sekarang pasti Summarize akan dijalankan dahulu tanpa menunggu last chunk
+    *
+    ! -->
+    <script>
+        class TranslatedAudioText {
+            constructor(text, chunk_idx) {
+                this.translated_text = text
+                this.chunk_idx = chunk_idx
+            }
+        }
+
+        let mediaRecorder
+        let audioChunks = []
+        let recorderArray = []
+        let isRecording = false
+        let startTime
+        let timerInterval
+        let translatedText = []
+        let translatedTextFull = ''
+
+        let isFirstChunk = true
+
+        let pendingChunkPromises = []
+
+        let webmHeader = null
+        let headerExtracted = false
+        
+        const CHUNK_DURATION = 10 * 1000 // on milliseconds
+
+        // Cache jQuery selectors
+        const $recordButton = $('#recordButton')
+        const $playButton = $('#playButton')
+        const $downloadButton = $('#downloadButton')
+        const $audioPlayer = $('#audioPlayer')
+        const $timerDisplay = $('#timer')
+        const $recordingIndicator = $('#recordingIndicator')
+        const $statusText = $('#status-text')
+        
+        function updateTimer() {
+            const now = Date.now();
+            const diff = now - startTime;
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            $timerDisplay.text(
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+            );
+        }
+        
+        // because the when recording is chunked, we need to merge all the chunks if needed the full audio
+        function getFullAudio() {
+            return new Blob(audioChunks, { type: 'audio/webm' })
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                $statusText.text('Recording...')
+                
+                // Create a new recorder for each chunk
+                async function createNewRecorder() {
+                    const mediaRecorder = new MediaRecorder(stream);
+                    let chunkData = []
+                    
+                    mediaRecorder.ondataavailable = function(event) {
+                        if(event.data.size > 0) {
+                            chunkData.push(event.data)
+                        }
+                    };
+                    
+                    mediaRecorder.onstop = async function() {
+                        // Create a complete WebM file from this chunk's data
+                        const audioBlob = new Blob(chunkData, { type: 'audio/webm' })
+                        const chunkNumber = audioChunks.length + 1;
+                        audioChunks.push(audioBlob)
+                        
+                        // Send this chunk to API
+                        const sendPromise = sendChunkToLLM(audioBlob, chunkNumber)
+                        pendingChunkPromises.push(sendPromise)
+                        
+                        // Tunggu hingga pengiriman chunk selesai
+                        await sendPromise
+                        
+                        // Start recording the next chunk
+                        if (isRecording) {
+                            createNewRecorder()
+                        }
+                    };
+                    
+                    // Start recording this chunk
+                    mediaRecorder.start()
+                    
+                    // Stop after desired duration
+                    setTimeout(() => {
+                        if (mediaRecorder.state !== 'inactive') {
+                            mediaRecorder.stop()
+                        }
+                    }, CHUNK_DURATION)
+                    
+                    return mediaRecorder
+                }
+                
+                // Start the first recorder
+                mediaRecorder = await createNewRecorder()
+                recorderArray.push(mediaRecorder)
+                isRecording = true
+
+                // ui update
+                startTime = Date.now()
+                timerInterval = setInterval(updateTimer, 1000)
+                $recordButton.html('<i class="fas fa-stop">Stop</i>').removeClass('btn-danger').addClass('btn-warning')
+                $recordingIndicator.addClass('active')
+
+            } catch (err) {
+                $statusText.text('Failed to access microphone')
+                showInfoModal('Failed to access microphone. Please ensure you have granted permission.', 'Failed access microphone')
+            }
+        }
+        
+        async function stopRecording() {
+            // Set global recording state to false
+            isRecording = false
+            
+            // Stop the current recorder (and any others that might be active)
+            if (recorderArray && recorderArray.length > 0) {
+                recorderArray.forEach(recorder => {
+                    if (recorder && recorder.state !== 'inactive') {
+                        recorder.stop()
+                    }
+                    
+                    // Stop all tracks on each recorder's stream
+                    if (recorder && recorder.stream) {
+                        recorder.stream.getTracks().forEach(track => track.stop())
+                    }
+                })
+            }
+            
+            // Stop the timer
+            clearInterval(timerInterval)
+        
+            // UI update
+            $recordButton.html('<i class="fas fa-microphone">Start</i>').removeClass('btn-warning').addClass('btn-danger')
+            $recordingIndicator.removeClass('active')
+            
+            console.log('Recording stopped, chunk data')
+            console.log(translatedText)
+
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
+            const audioUrl = URL.createObjectURL(audioBlob)
+
+            // ui and player update
+            $statusText.text('Recording finished')
+            $audioPlayer.prop('src', audioUrl)
+            $playButton.prop('disabled', false)
+            $downloadButton.prop('disabled', false)
+            
+            await Promise.all(pendingChunkPromises)
+
+            // Summarize translated audio after recording
+            await summariesTranslatedAudio()
+        }
+
+
+        async function summariesTranslatedAudio() {
+            try {
+                // sort translated text from chunk index
+                translatedText.sort((a, b) => a.chunk_idx - b.chunk_idx)
+
+                // get full text
+                translatedTextFull = translatedText.map(t => t.translated_text).join(' ')
+                console.log('Full translated text: ', translatedTextFull)
+                const response = await fetch('/api/audio/summaries', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        full_translated_text: translatedTextFull
+                    })
+                })
+                const resp = await response.json() 
+                
+                if(resp.error) {
+                    throw new Error(resp.message)
+                } else {
+                    const data = resp.data
+                    console.log(resp)
+                }
+
+            } catch(e) {
+                console.log(e)
+            }
+        }
+
+
+        // V1 SIMPLE MODE
+        async function sendChunkToLLM(audioBlob, chunk_number) {
+            try {
+
+                const formData = new FormData();
+                formData.append('audio', audioBlob, `chunk-${chunk_number}.webm`);
+                formData.append('chunkNumber', chunk_number)
+
+                console.log('Blob size:', audioBlob.size, 'Chunk number:', chunk_number)
+
+
+                // send req
+                const response  = await fetch('/api/audio/chunks', {
+                    method: 'POST',
+                    body: formData
+                })
+                const resp = await response.json()
+
+                if(resp.error) {
+                    throw new Error(resp.message)
+                } else {
+
+                    // update translated text
+                    const data = resp.data
+                    const translated_text_obj = new TranslatedAudioText(data.translated_text, data.chunk_number - 1)
+                    translatedText.push(translated_text_obj)
+                    console.log(resp)
+                }
+
+
+            } catch(e) {
+                console.log(e)
+            }
+            
+        }
+
+
+        // ADVANCED WITH QUEUE SEND CHUNK
+
+
+        $('document').ready(async function() {
+            hideLoader()
+            
+            // Event Handlers
+            $recordButton.on('click', async function() {
+                if (!isRecording) {
+                    await startRecording();
+                } else {
+                    await stopRecording();
+                }
+            });
+            
+            $playButton.on('click', function() {
+                $statusText.text('Playing recording...');
+                $audioPlayer[0].play();
+            });
+            
+            $downloadButton.on('click', function() {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const url = URL.createObjectURL(audioBlob);
+                const $link = $('<a>')
+                    .attr({
+                        href: url,
+                        download: 'recording.webm'
+                    })
+                    .hide()
+                    .appendTo('body');
+                
+                $link[0].click();
+                $link.remove();
+                URL.revokeObjectURL(url);
+                $statusText.text('Recording downloaded');
+            });
+            
+            // Event listener for audio player
+            $audioPlayer.on('ended', function() {
+                $statusText.text('Playback finished');
+            });
+
+            // logout
+            // $('#logout').click(async function() {
+            //     event.preventDefault()
+
+            //     showLoader()
+
+            //     try {
+            //         const resp = await fetch("/api/logout", {
+            //             method: 'POST',
+            //             headers: {
+            //                 'Content-Type': 'application/json'
+            //             },
+            //         })
+            //         const response = await resp.json()
+
+            //         if (!response.error) {
+            //             window.location.href = '/login'
+            //         } else {
+            //             showInfoModal('Logout Failed', 'Logout Failed')
+            //         }
+            //     } catch (error) {
+            //         showInfoModal('Logout Failed', 'Logout Failed')
+            //     } finally {
+            //         hideLoader()
+            //     }
+            // })
+        })
+    </script>
+</body>
+</html>
