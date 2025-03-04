@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -53,7 +52,7 @@ func (h *SummariesHandler) ProcessChunkAudio(c *fiber.Ctx) error {
 	}
 
 	type OARespSpeechToText struct {
-		Text string `json:"text" form:"text"`
+		Text string `json:"text" form:"text"` // The transcribed text from the audio
 	}
 
 	// Get the audio file from the form data
@@ -144,16 +143,12 @@ func (h *SummariesHandler) ProcessChunkAudio(c *fiber.Ctx) error {
 		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to parse response body")
 	}
 
-	// Tambahkan setelah membaca respBody
-	log.Printf("Raw response from OpenAI: %s\n", string(respBody))
-
 	return utils.ResponseWitData(c, fiber.StatusOK, "success process chunk", fiber.Map{
 		"chunk_number":    chunk_number,
 		"translated_text": oaResp.Text,
 	})
 }
 
-// TODO Check this function when connect to LLM
 func (h *SummariesHandler) SummariesData(c *fiber.Ctx) error {
 
 	summaries_input := new(models.SummariesData)
@@ -169,17 +164,30 @@ func (h *SummariesHandler) SummariesData(c *fiber.Ctx) error {
 			"comprehensive_summary": <string>
 		}
 
+		Important Instructions:
+		- Before summarizing, evaluate the content of the transcript:
+		- If the transcript is very short (under 30 seconds or fewer than 50 words) or contains minimal substantive content, respond with a simplified format:
+		
+		{
+			"tldr_summary": "The audio is too brief to extract meaningful summary points. It contains only [brief description of content].",
+			"comprehensive_summary": "The transcript is too short to provide a comprehensive summary. Original content: [include full transcript]"
+		}
+		
+		- Only proceed with full summarization if the transcript contains sufficient content for meaningful summaries.
+
 		Part 1: TLDR (Too Long; Didn't Read) Summary
-		- Produce a brief, high-level summary (3-5 sentences) that captures the most critical - points, key decisions, and primary action items.
-		Ensure it is concise, clear, and written in a formal tone.
+		- Produce a brief, high-level summary (3-5 sentences) that captures the most critical points, key decisions, and primary action items.
+		- Ensure it is concise, clear, and written in a formal tone.
+		- If there are no clear decisions or action items in the transcript, explicitly state this.
 
 		Part 2: Comprehensive Summary
 		- Create an in-depth summary that includes:
-			- An overview of the meeting agenda.
-			- Detailed discussion points and context around the topics covered.
-			- Specific decisions made, including any deadlines and assigned responsibilities.
-			- Additional relevant insights to provide a full picture of the meeting’s outcomes.
-		- Format this summary using clear headings and bullet points where appropriate to enhance readability.
+		- An overview of the meeting agenda (if mentioned).
+		- Detailed discussion points and context around the topics covered.
+		- Specific decisions made, including any deadlines and assigned responsibilities.
+		- Additional relevant insights to provide a full picture of the meeting's outcomes.
+		- Format this summary using clear headings and bullet points where appropriate to enhance readability (use markdown format for this comprehensive summary section).
+		- The length of this summary should be proportional to the length and complexity of the original transcript.
 
 		Both parts should maintain a formal and structured style, ensuring clarity and completeness. The TLDR provides a quick reference, while the comprehensive summary offers the full details needed for thorough understanding.
 
@@ -218,7 +226,7 @@ func (h *SummariesHandler) SummariesData(c *fiber.Ctx) error {
 		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to parse response body")
 	}
 
-	return utils.ResponseWitData(c, fiber.StatusOK, "success", fiber.Map{
+	return utils.ResponseWitData(c, fiber.StatusOK, "success summarize data", fiber.Map{
 		"summaries_data": response_data,
 	})
 }

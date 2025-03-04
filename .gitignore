@@ -4,3 +4,4 @@ tmp
 
 # file
 .env
+internal/handlers/dummydata.go

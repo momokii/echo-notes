@@ -15,12 +15,14 @@ import (
 )
 
 func main() {
+	DEVMODE := os.Getenv("APP_ENV")
+	PORT := os.Getenv("PORT")
 
 	openaiClient, err := openai.New(
 		os.Getenv("OPENAI_API_KEY"),
 		"",
 		"",
-		openai.WithModel("gpt-4o-mini"),
+		openai.WithModel(os.Getenv("OPENAI_MODEL_NAME")),
 	)
 	if err != nil {
 		log.Println("Error creating OpenAI client: ", err)
@@ -63,12 +65,11 @@ func main() {
 	api.Post("/audio/chunks", summariesHandler.ProcessChunkAudio)
 	api.Post("/audio/summaries", summariesHandler.SummariesData)
 
-	devMode := os.Getenv("APP_ENV")
-	if devMode != "development" && devMode != "production" {
+	if DEVMODE != "development" && DEVMODE != "production" {
 		log.Println("APP_ENV not set")
 	} else {
-		log.Println("Running on: " + devMode)
-		if err := app.Listen(":3003"); err != nil {
+		log.Println("Running on: " + DEVMODE)
+		if err := app.Listen(":" + PORT); err != nil {
 			log.Println("Error running Server: ", err)
 		}
 	}

@@ -1,14 +1,16 @@
 <!-- Loader -->
 <div class="loading-overlay">
-    <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
+    <div class="text-center">
+        <div class="spinner-border text-dark-emphasis" role="status"></div>
+        <div class="mt-2 text-dark-emphasis" id="loading-text">Loading...</div>
     </div>
 </div>
 
 <script>
-    function showLoader() {
-            $('.loading-overlay').fadeIn();
-        }
+    function showLoader(loading_text = 'Loading...') {
+        $('#loading-text').text(loading_text);
+        $('.loading-overlay').fadeIn();
+    }
 
     // Fungsi untuk menyembunyikan loader
     function hideLoader() {
