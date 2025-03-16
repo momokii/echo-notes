@@ -2,9 +2,32 @@
 <body style="height: auto;">
     <div class="container py-3">
         <div class="recorder-container">
+            <div class="profile-section d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div>
+                        <h5 class="username">{{.User.Username}}</h5>
+                        <div class="d-flex align-items-center mt-1">
+                            <span class="credit-badge d-inline-flex align-items-center bg-light rounded-pill px-3 py-1">
+                                <i class="fas fa-bolt me-2 text-warning"></i>
+                                <span class="text-secondary me-1">Credits:</span>
+                                <span class="fw-bold" id="user_credit_token">{{.User.CreditToken}}</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="logout" class="btn btn-outline-danger logout-btn">
+                    <i class="fas fa-sign-out-alt me-1"></i> Logout
+                </button>
+            </div>
+            
             <div class="text-center mb-4">
                 <h1 class="display-5 fw-bold">Echo Notes</h1>
                 <p class="text-muted">Record your meetings effortlessly and let us generate a comprehensive summary for you. Capture every detail without missing a beat!</p>
+                <div class="alert alert-info py-2 mt-2 d-inline-flex align-items-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span>Each recording session costs <strong>10 credit tokens</strong> from your account balance.</span>
+                </div>
             </div>
             
             <div class="waveform bg-light">
@@ -258,6 +281,8 @@
                 formData.append('audio', audioBlob, `chunk-${chunk_number}.webm`);
                 formData.append('chunkNumber', chunk_number)
 
+                // console.log('Blob size:', audioBlob.size, 'Chunk number:', chunk_number)
+
                 // send req
                 const response  = await fetch('/api/audio/chunks', {
                     method: 'POST',
@@ -273,6 +298,7 @@
                     const data = resp.data
                     const translated_text_obj = new TranslatedAudioText(data.translated_text, data.chunk_number - 1)
                     translatedText.push(translated_text_obj)
+                    // console.log(resp)
                 }
 
 
@@ -291,6 +317,8 @@
 
                 // get full text
                 translatedTextFull = translatedText.map(t => t.translated_text).join(' ')
+
+                // console.log(translatedText)
                 
                 const response = await fetch('/api/audio/summaries', {
                     method: 'POST',
@@ -338,12 +366,42 @@
             $('#tldrContent').html(`<p>${tldrText}</p>`)
 
             // Render markdown for comprehensive summary
-            $('#comprehensiveContent').html(`<md-block>${comprehensiveMarkdown}</md-block>`)
+            $('#comprehensiveContent').html(marked.parse(comprehensiveMarkdown))
             
             // Scroll to summary section
             $('html, body').animate({
                 scrollTop: $("#summarySection").offset().top - 20
             }, 500)
+        }
+
+        async function checkReduceToken() {
+            showLoader("Checking Token...")
+            let isSufficient = false
+
+            try{
+                const response = await fetch('/api/audio/summaries/cost', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                const resp = await response.json()
+
+                if (resp.error) throw new Error(resp.message)
+                else {
+                    const data = resp.data
+
+                    // update user credit token
+                    $('#user_credit_token').text(data.new_credit_token)
+                    isSufficient = true
+                }
+
+            } catch (e) {
+                showInfoModal(e.message, 'Failed to reduce token')
+            } finally {
+                hideLoader()
+                return isSufficient
+            }
         }
 
         $('document').ready(async function() {
@@ -352,7 +410,8 @@
             // Event Handlers
             $recordButton.on('click', async function() {
                 if (!isRecording) {
-                    await startRecording()
+                    const isSufficient = await checkReduceToken()
+                    if(isSufficient) await startRecording()
                 } else {
                     await stopRecording()
 
@@ -431,31 +490,34 @@
             })
 
             // logout
-            // $('#logout').click(async function() {
-            //     event.preventDefault()
+            $('#logout').click(async function() {
+                event.preventDefault()
 
-            //     showLoader()
+                showLoader()
 
-            //     try {
-            //         const resp = await fetch("/api/logout", {
-            //             method: 'POST',
-            //             headers: {
-            //                 'Content-Type': 'application/json'
-            //             },
-            //         })
-            //         const response = await resp.json()
+                try {
+                    const resp = await fetch("/api/logout", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                    })
+                    const response = await resp.json()
 
-            //         if (!response.error) {
-            //             window.location.href = '/login'
-            //         } else {
-            //             showInfoModal('Logout Failed', 'Logout Failed')
-            //         }
-            //     } catch (error) {
-            //         showInfoModal('Logout Failed', 'Logout Failed')
-            //     } finally {
-            //         hideLoader()
-            //     }
-            // })
+                    if (!response.error) {
+                        // setup for sso, just throw to dashboard page for now, because on backend will redirect to SSO dashboard page
+                        window.location.href = '/'
+
+                    } else {
+                        showInfoModal('Logout Failed', 'Logout Failed')
+                    }
+
+                } catch (e) {
+                    showInfoModal('Logout Failed: ' + e.message, 'Logout Failed')
+                } finally {
+                    hideLoader()
+                }
+            })
         })
     </script>
 </body>

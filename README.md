@@ -2,6 +2,11 @@
 
 This repository contains the source code for the **Echo-Notes Web App**. The primary goal of this application is to provide an intuitive platform for recording audio directly from web browsers, with AI-powered transcription and summarization capabilities. Echo-Notes helps users capture and extract key insights from meetings efficiently without the need for manual note-taking.
 
+In addition to Echo-Notes, this project now includes **Single Sign-On (SSO)** integration for secure user authentication. The SSO implementation is based on [go-sso-web repository](https://github.com/momokii/go-sso-web), providing a seamless and secure authentication experience.
+
+## **New Feature: Credit System Integration**
+This project now includes a **credit system** integrated with the SSO authentication. Each feature that using LLM will consumes a different amount of credits, referred to as "feature cost," depending on the complexity of the processing required. The credit system ensures fair usage and allows users to manage their usage effectively.
+
 ## Features
 
 - **Live Audio Recording**: Record meetings directly from your web browser with a simple, intuitive interface.

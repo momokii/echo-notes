@@ -6,10 +6,16 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/helmet"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/template/html/v2"
+	"github.com/momokii/echo-notes/internal/databases"
 	"github.com/momokii/echo-notes/internal/handlers"
+	"github.com/momokii/echo-notes/internal/middlewares"
 	"github.com/momokii/go-llmbridge/pkg/openai"
+
+	sso_session "github.com/momokii/go-sso-web/pkg/repository/session"
+	sso_user "github.com/momokii/go-sso-web/pkg/repository/user"
 
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -18,6 +24,7 @@ func main() {
 	DEVMODE := os.Getenv("APP_ENV")
 	PORT := os.Getenv("PORT")
 
+	// OpenAI client init
 	openaiClient, err := openai.New(
 		os.Getenv("OPENAI_API_KEY"),
 		"",
@@ -31,8 +38,17 @@ func main() {
 		log.Println("OpenAI client initialized...")
 	}
 
+	// init database and session
+	postgreService := databases.NewPostgresService()
+	sessionService := middlewares.NewSessionMiddleware(postgreService, *sso_user.NewUserRepo(), *sso_session.NewSessionRepo())
+
+	// repo init
+	userRepo := sso_user.NewUserRepo()
+	sessionRepo := sso_session.NewSessionRepo()
+
 	// handler init
-	summariesHandler := handlers.NewSummariesHandler(openaiClient)
+	summariesHandler := handlers.NewSummariesHandler(openaiClient, postgreService, *userRepo)
+	authHandler := handlers.NewAuthHandler(*userRepo, *sessionRepo, postgreService)
 
 	engine := html.New("./web", ".html")
 	app := fiber.New(fiber.Config{
@@ -54,16 +70,19 @@ func main() {
 
 	app.Use(cors.New())
 	app.Use(logger.New())
+	app.Use(helmet.New())
+	// app.Use(recover.New())
 	app.Static("/web", "./web")
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.Render("dashboard", fiber.Map{
-			"Title": "Echo Notes",
-		})
-	})
+	// auth sso
+	app.Get("/auth/sso", sessionService.IsNotAuth, authHandler.SSOAuthLogin)
+	api.Post("/logout", sessionService.IsAuth, authHandler.Logout)
 
-	api.Post("/audio/chunks", summariesHandler.ProcessChunkAudio)
-	api.Post("/audio/summaries", summariesHandler.SummariesData)
+	app.Get("/", sessionService.IsAuth, summariesHandler.SummariesView)
+
+	api.Post("/audio/chunks", sessionService.IsAuth, summariesHandler.ProcessChunkAudio)
+	api.Post("/audio/summaries", sessionService.IsAuth, summariesHandler.SummariesData)
+	api.Post("/audio/summaries/cost", sessionService.IsAuth, summariesHandler.SummariesReduceUserToken)
 
 	if DEVMODE != "development" && DEVMODE != "production" {
 		log.Println("APP_ENV not set")

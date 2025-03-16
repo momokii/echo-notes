@@ -1,15 +1,17 @@
 package handlers
 
 import (
-	"bytes"
+	"database/sql"
 	"encoding/json"
-	"io"
-	"mime/multipart"
-	"net/http"
-	"os"
+	"fmt"
 	"strconv"
 
+	sso_models "github.com/momokii/go-sso-web/pkg/models"
+	sso_user "github.com/momokii/go-sso-web/pkg/repository/user"
+	sso_utils "github.com/momokii/go-sso-web/pkg/utils"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/momokii/echo-notes/internal/databases"
 	"github.com/momokii/echo-notes/internal/models"
 	"github.com/momokii/echo-notes/pkg/utils"
 	"github.com/momokii/go-llmbridge/pkg/openai"
@@ -17,12 +19,67 @@ import (
 
 type SummariesHandler struct {
 	openaiClient openai.OpenAI
+	dbService    databases.DBService
+	userRepo     sso_user.UserRepo
 }
 
-func NewSummariesHandler(openaiClient openai.OpenAI) *SummariesHandler {
+func NewSummariesHandler(openaiClient openai.OpenAI, dbService databases.DBService, userRepo sso_user.UserRepo) *SummariesHandler {
 	return &SummariesHandler{
 		openaiClient: openaiClient,
+		dbService:    dbService,
+		userRepo:     userRepo,
 	}
+}
+
+func (h *SummariesHandler) SummariesView(c *fiber.Ctx) error {
+	user := c.Locals("user").(sso_models.UserSession)
+
+	return c.Render("dashboard", fiber.Map{
+		"Title": "Echo Notes",
+		"User":  user,
+	})
+}
+
+// TODO: test this function
+func (h *SummariesHandler) SummariesReduceUserToken(c *fiber.Ctx) error {
+
+	// get user from session
+	user_session := c.Locals("user").(sso_models.UserSession)
+	if user_session.Id == 0 {
+		return utils.ResponseError(c, fiber.StatusUnauthorized, "unauthorized")
+	}
+
+	// start transaction
+	if err, code := h.dbService.Transaction(c.Context(), func(tx *sql.Tx) (error, int) {
+
+		user, err := h.userRepo.FindByID(tx, user_session.Id)
+		if err != nil {
+			return err, fiber.StatusInternalServerError
+		}
+
+		if user.Id == 0 {
+			return fmt.Errorf("user not found"), fiber.StatusNotFound
+		}
+
+		// check user current token
+		if user.CreditToken < utils.MEETING_SUMMARY_AI_COST {
+			return fmt.Errorf("Not enough credit token to use this feature"), fiber.StatusBadRequest
+		}
+
+		// for now, just reduce the token
+		if err := sso_utils.UpdateUserCredit(tx, h.userRepo, user, utils.MEETING_SUMMARY_AI_COST); err != nil {
+			return err, fiber.StatusInternalServerError
+		}
+
+		return nil, fiber.StatusOK
+	}); err != nil {
+		return utils.ResponseError(c, code, err.Error())
+	}
+
+	return utils.ResponseWitData(c, fiber.StatusOK, "success reduce user token", fiber.Map{
+		"feature_cost":     utils.MEETING_SUMMARY_AI_COST,
+		"new_credit_token": user_session.CreditToken - utils.MEETING_SUMMARY_AI_COST,
+	})
 }
 
 func (h *SummariesHandler) ProcessChunkAudio(c *fiber.Ctx) error {
@@ -43,104 +100,18 @@ func (h *SummariesHandler) ProcessChunkAudio(c *fiber.Ctx) error {
 		return utils.ResponseError(c, fiber.StatusBadRequest, "no audio file found in form data")
 	}
 
-	type OAReqSpeechToText struct {
-		File           *multipart.FileHeader `json:"file" form:"file"`                       // required
-		Model          string                `json:"model" form:"model"`                     // required
-		Prompt         string                `json:"prompt" form:"prompt"`                   // optional, An optional text to guide the model's style or continue a previous audio segment
-		ResponseFormat string                `json:"response_format" form:"response_format"` // default to json, The format of the response. Either json or text, srt, verbose_json, or vtt.
-		Temperature    float64               `json:"temperature" form:"temperature"`         // The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. If set to 0, the model will use log probability to automatically increase the temperature until certain thresholds are hit.
-	}
-
-	type OARespSpeechToText struct {
-		Text string `json:"text" form:"text"` // The transcribed text from the audio
-	}
-
 	// Get the audio file from the form data
 	audioFile := files[0]
 
-	// Set default temperature
-	temperature := 0
-
-	// Create the request object
-	req := OAReqSpeechToText{
-		File:        audioFile,
-		Model:       "whisper-1",
-		Temperature: float64(temperature),
+	// create request for OpenAI Speech to Text
+	req := openai.OATranscriptionDefaultReq{
+		File:     audioFile,
+		Filename: audioFile.Filename,
 	}
 
-	// Create a buffer to hold the form data
-	var b bytes.Buffer
-	w := multipart.NewWriter(&b)
-
-	// Add the file to the form
-	fw, err := w.CreateFormFile("file", audioFile.Filename)
+	oaResp, err := h.openaiClient.OpenAISpeechToTextDefault(&req)
 	if err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to create form file")
-	}
-
-	// Check file format and ensure it's .webm
-	fileName := audioFile.Filename
-
-	file, err := audioFile.Open()
-	if err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to open audio file")
-	}
-	defer file.Close()
-
-	// Create form file with .webm filename
-	fw, err = w.CreateFormFile("file", fileName)
-	if err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to create form file with webm extension")
-	}
-
-	if _, err = io.Copy(fw, file); err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to copy audio file")
-	}
-
-	// Add other fields to the form
-	if fw, err = w.CreateFormField("model"); err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to create form field")
-	}
-	if _, err = fw.Write([]byte(req.Model)); err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to write form field")
-	}
-
-	if fw, err = w.CreateFormField("temperature"); err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to create form field")
-	}
-	if _, err = fw.Write([]byte(strconv.FormatFloat(req.Temperature, 'f', -1, 64))); err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to write form field")
-	}
-
-	// Close the writer to finalize the form
-	w.Close()
-
-	// Create the HTTP request
-	httpReq, err := http.NewRequest("POST", "https://api.openai.com/v1/audio/transcriptions", &b)
-	if err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to create HTTP request")
-	}
-	httpReq.Header.Set("Content-Type", w.FormDataContentType())
-	httpReq.Header.Set("Authorization", "Bearer "+os.Getenv("OPENAI_API_KEY"))
-
-	// Send the request
-	client := &http.Client{}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to send HTTP request")
-	}
-	defer resp.Body.Close()
-
-	// Read the response
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to read response body")
-	}
-
-	// Parse the response
-	var oaResp OARespSpeechToText
-	if err := json.Unmarshal(respBody, &oaResp); err != nil {
-		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to parse response body")
+		return utils.ResponseError(c, fiber.StatusInternalServerError, "failed to process chunk audio: "+err.Error())
 	}
 
 	return utils.ResponseWitData(c, fiber.StatusOK, "success process chunk", fiber.Map{
@@ -188,6 +159,18 @@ func (h *SummariesHandler) SummariesData(c *fiber.Ctx) error {
 		- Additional relevant insights to provide a full picture of the meeting's outcomes.
 		- Format this summary using clear headings and bullet points where appropriate to enhance readability (use markdown format for this comprehensive summary section).
 		- The length of this summary should be proportional to the length and complexity of the original transcript.
+
+		Language Adaptation:
+		- Identify the primary language used in the transcript.
+		- Generate both summaries (TLDR and comprehensive) in the same language as the transcript.
+		- If the transcript is in Indonesian, provide summaries in Indonesian.
+		- If the transcript is in English, provide summaries in English.
+		- For transcripts with mixed languages, use the predominant language for the summaries.
+		- Maintain proper grammar, formatting, and style conventions specific to the identified language.
+
+		Additional Language-Specific Instructions:
+		- For Indonesian transcripts: Gunakan bahasa Indonesia formal dan hindari penggunaan kata serapan yang tidak perlu. Pastikan tata bahasa dan ejaan sesuai dengan kaidah Bahasa Indonesia yang baik dan benar.
+		- For English transcripts: Use formal English and appropriate business terminology. Ensure proper grammar and spelling according to standard English conventions.
 
 		Both parts should maintain a formal and structured style, ensuring clarity and completeness. The TLDR provides a quick reference, while the comprehensive summary offers the full details needed for thorough understanding.
 
