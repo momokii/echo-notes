@@ -1,0 +1,28 @@
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(25) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE meeting_summaries (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(255) NOT NULL, 
+	description TEXT NOT NULL, 
+	user_id INT NOT NULL REFERENCES users(id),
+	simple_summaries TEXT NOT NULL,
+	comprehensive_summaries TEXT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE meeting_grouping_summaries (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(255) NOT NULL, 
+	description TEXT NOT NULL, 
+	user_id INT NOT NULL REFERENCES users(id),
+	grouping_summaries TEXT NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

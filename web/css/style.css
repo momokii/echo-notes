@@ -106,3 +106,43 @@ body {
     height: 3rem;
 }
 
+
+/* card styling */
+.room-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.room-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    background-color: #f9f9f9;
+    transition: all 0.3s ease;
+    /* Hilangkan margin-bottom jika sudah mengatur gap di grid */
+}
+
+.room-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card-body {
+    flex: 1; /* Membuat bagian ini mengisi ruang yang tersedia */
+}
+
+.card-footer {
+    margin-top: 16px;
+    text-align: right; /* Atur sesuai keinginan, misal center atau left */
+}
+
+.card-footer button {
+    margin-left: 4px;
+}
+
+/* Jika masih ingin menggunakan .tab-buttons */
+.tab-buttons .btn {
+    margin-right: 10px;
+}

@@ -8,10 +8,12 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/helmet"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/template/html/v2"
 	"github.com/momokii/echo-notes/internal/databases"
 	"github.com/momokii/echo-notes/internal/handlers"
 	"github.com/momokii/echo-notes/internal/middlewares"
+	meeting_summaries "github.com/momokii/echo-notes/internal/repository/meeting-summaries"
 	"github.com/momokii/go-llmbridge/pkg/openai"
 
 	sso_session "github.com/momokii/go-sso-web/pkg/repository/session"
@@ -45,9 +47,10 @@ func main() {
 	// repo init
 	userRepo := sso_user.NewUserRepo()
 	sessionRepo := sso_session.NewSessionRepo()
+	meetingSummariesRepo := meeting_summaries.NewMeetingSummaries()
 
 	// handler init
-	summariesHandler := handlers.NewSummariesHandler(openaiClient, postgreService, *userRepo)
+	summariesHandler := handlers.NewSummariesHandler(openaiClient, postgreService, *userRepo, *meetingSummariesRepo)
 	authHandler := handlers.NewAuthHandler(*userRepo, *sessionRepo, postgreService)
 
 	engine := html.New("./web", ".html")
@@ -71,18 +74,28 @@ func main() {
 	app.Use(cors.New())
 	app.Use(logger.New())
 	app.Use(helmet.New())
-	// app.Use(recover.New())
+	// production only for using recover for panic resolver
+	if DEVMODE == "production" {
+		app.Use(recover.New())
+	}
 	app.Static("/web", "./web")
 
 	// auth sso
 	app.Get("/auth/sso", sessionService.IsNotAuth, authHandler.SSOAuthLogin)
 	api.Post("/logout", sessionService.IsAuth, authHandler.Logout)
 
-	app.Get("/", sessionService.IsAuth, summariesHandler.SummariesView)
+	app.Get("/", sessionService.IsAuth, summariesHandler.RecorderView)
+	app.Get("/summaries", sessionService.IsAuth, summariesHandler.SummariesView)
 
 	api.Post("/audio/chunks", sessionService.IsAuth, summariesHandler.ProcessChunkAudio)
 	api.Post("/audio/summaries", sessionService.IsAuth, summariesHandler.SummariesData)
 	api.Post("/audio/summaries/cost", sessionService.IsAuth, summariesHandler.SummariesReduceUserToken)
+
+	api.Get("/summaries", sessionService.IsAuth, summariesHandler.GetSummaries)
+	api.Get("/summaries/:id", sessionService.IsAuth, summariesHandler.GetOneSummary)
+	api.Post("/summaries", sessionService.IsAuth, summariesHandler.SaveSummaries)
+	api.Patch("/summaries/:id", sessionService.IsAuth, summariesHandler.EditSummaries)
+	api.Delete("/summaries/:id", sessionService.IsAuth, summariesHandler.DeleteSummaries)
 
 	if DEVMODE != "development" && DEVMODE != "production" {
 		log.Println("APP_ENV not set")
