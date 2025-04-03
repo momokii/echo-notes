@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/lib/pq"
 	"github.com/momokii/echo-notes/internal/models"
 )
 
@@ -88,6 +89,38 @@ func (m *MeetingSummaries) Find(tx *sql.Tx, pagination models.PaginationFilterin
 	return &meetingSummaries, total, nil
 }
 
+func (m *MeetingSummaries) FindByIds(tx *sql.Tx, ids []int, userId int) (*[]models.MeetingSummaries, error) {
+	var meetingSummaries []models.MeetingSummaries
+
+	query := "SELECT id, name, description, user_id, simple_summaries, comprehensive_summaries, created_at, updated_at FROM meeting_summaries WHERE id = ANY($1) AND user_id = $2"
+	rows, err := tx.Query(query, pq.Array(ids), userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var meetingSummary models.MeetingSummaries
+
+		if err := rows.Scan(
+			&meetingSummary.Id,
+			&meetingSummary.Name,
+			&meetingSummary.Description,
+			&meetingSummary.UserId,
+			&meetingSummary.SimpleSummaries,
+			&meetingSummary.ComprehensiveSummaries,
+			&meetingSummary.CreatedAt,
+			&meetingSummary.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		meetingSummaries = append(meetingSummaries, meetingSummary)
+	}
+
+	return &meetingSummaries, nil
+}
+
 func (m *MeetingSummaries) FindById(tx *sql.Tx, id, userId int) (*models.MeetingSummaries, error) {
 	var meetingSummaries models.MeetingSummaries
 
@@ -128,7 +161,6 @@ func (m *MeetingSummaries) Create(tx *sql.Tx, meetingSummariesData models.Meetin
 	return nil
 }
 
-// TODO: Implement the following methods update meeting summaries (testing)
 func (m *MeetingSummaries) Update(tx *sql.Tx, meetingSummariesData models.MeetingSummaries) error {
 
 	query := "UPDATE meeting_summaries SET name = $1, description = $2 WHERE id = $3 AND user_id = $4"
@@ -148,7 +180,6 @@ func (m *MeetingSummaries) Update(tx *sql.Tx, meetingSummariesData models.Meetin
 	return nil
 }
 
-// TODO: Implement the following methods delete meeting summaries (testing)
 func (m *MeetingSummaries) Delete(tx *sql.Tx, meetingSummariesData models.MeetingSummaries) error {
 
 	query := "DELETE FROM meeting_summaries WHERE id = $1 AND user_id = $2"

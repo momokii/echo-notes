@@ -25,7 +25,12 @@ type SummariesHandler struct {
 	meetingSummariesRepo meeting_summaries.MeetingSummaries
 }
 
-func NewSummariesHandler(openaiClient openai.OpenAI, dbService databases.DBService, userRepo sso_user.UserRepo, meetingSummariesRepo meeting_summaries.MeetingSummaries) *SummariesHandler {
+func NewSummariesHandler(
+	openaiClient openai.OpenAI,
+	dbService databases.DBService,
+	userRepo sso_user.UserRepo,
+	meetingSummariesRepo meeting_summaries.MeetingSummaries,
+) *SummariesHandler {
 	return &SummariesHandler{
 		openaiClient:         openaiClient,
 		dbService:            dbService,
@@ -60,6 +65,8 @@ func (h *SummariesHandler) SummariesReduceUserToken(c *fiber.Ctx) error {
 		return utils.ResponseError(c, fiber.StatusUnauthorized, "unauthorized")
 	}
 
+	const FEATURE_COST = utils.MEETING_SUMMARY_AI_COST
+
 	// start transaction
 	if err, code := h.dbService.Transaction(c.Context(), func(tx *sql.Tx) (error, int) {
 
@@ -73,12 +80,12 @@ func (h *SummariesHandler) SummariesReduceUserToken(c *fiber.Ctx) error {
 		}
 
 		// check user current token
-		if user.CreditToken < utils.MEETING_SUMMARY_AI_COST {
+		if user.CreditToken < FEATURE_COST {
 			return fmt.Errorf("Not enough credit token to use this feature"), fiber.StatusBadRequest
 		}
 
 		// for now, just reduce the token
-		if err := sso_utils.UpdateUserCredit(tx, h.userRepo, user, utils.MEETING_SUMMARY_AI_COST); err != nil {
+		if err := sso_utils.UpdateUserCredit(tx, h.userRepo, user, FEATURE_COST); err != nil {
 			return err, fiber.StatusInternalServerError
 		}
 
@@ -88,7 +95,7 @@ func (h *SummariesHandler) SummariesReduceUserToken(c *fiber.Ctx) error {
 	}
 
 	return utils.ResponseWitData(c, fiber.StatusOK, "success reduce user token", fiber.Map{
-		"feature_cost":     utils.MEETING_SUMMARY_AI_COST,
+		"feature_cost":     FEATURE_COST,
 		"new_credit_token": user_session.CreditToken - utils.MEETING_SUMMARY_AI_COST,
 	})
 }
@@ -138,55 +145,7 @@ func (h *SummariesHandler) SummariesData(c *fiber.Ctx) error {
 		return utils.ResponseError(c, fiber.StatusBadRequest, "failed to parse request body")
 	}
 
-	system_prompt := `
-		You are provided with the full transcription of a meeting. Your task is to generate two separate summaries based on the transcript and output them in the following JSON format:
-
-		{
-			"tldr_summary": <string>,
-			"comprehensive_summary": <string>
-		}
-
-		Important Instructions:
-		- Before summarizing, evaluate the content of the transcript:
-		- If the transcript is very short (under 30 seconds or fewer than 50 words) or contains minimal substantive content, respond with a simplified format:
-		
-		{
-			"tldr_summary": "The audio is too brief to extract meaningful summary points. It contains only [brief description of content].",
-			"comprehensive_summary": "The transcript is too short to provide a comprehensive summary. Original content: [include full transcript]"
-		}
-		
-		- Only proceed with full summarization if the transcript contains sufficient content for meaningful summaries.
-
-		Part 1: TLDR (Too Long; Didn't Read) Summary
-		- Produce a brief, high-level summary (3-5 sentences) that captures the most critical points, key decisions, and primary action items.
-		- Ensure it is concise, clear, and written in a formal tone.
-		- If there are no clear decisions or action items in the transcript, explicitly state this.
-
-		Part 2: Comprehensive Summary
-		- Create an in-depth summary that includes:
-		- An overview of the meeting agenda (if mentioned).
-		- Detailed discussion points and context around the topics covered.
-		- Specific decisions made, including any deadlines and assigned responsibilities.
-		- Additional relevant insights to provide a full picture of the meeting's outcomes.
-		- Format this summary using clear headings and bullet points where appropriate to enhance readability (use markdown format for this comprehensive summary section).
-		- The length of this summary should be proportional to the length and complexity of the original transcript.
-
-		Language Adaptation:
-		- Identify the primary language used in the transcript.
-		- Generate both summaries (TLDR and comprehensive) in the same language as the transcript.
-		- If the transcript is in Indonesian, provide summaries in Indonesian.
-		- If the transcript is in English, provide summaries in English.
-		- For transcripts with mixed languages, use the predominant language for the summaries.
-		- Maintain proper grammar, formatting, and style conventions specific to the identified language.
-
-		Additional Language-Specific Instructions:
-		- For Indonesian transcripts: Gunakan bahasa Indonesia formal dan hindari penggunaan kata serapan yang tidak perlu. Pastikan tata bahasa dan ejaan sesuai dengan kaidah Bahasa Indonesia yang baik dan benar.
-		- For English transcripts: Use formal English and appropriate business terminology. Ensure proper grammar and spelling according to standard English conventions.
-
-		Both parts should maintain a formal and structured style, ensuring clarity and completeness. The TLDR provides a quick reference, while the comprehensive summary offers the full details needed for thorough understanding.
-
-		**Important:** Ensure that your output is strictly in the provided JSON format with the keys "tldr_summary" and "comprehensive_summary".
-	`
+	system_prompt := utils.SYSTEM_PROMPT_RECORDING_SUMMARIES
 
 	messages := []openai.OAMessageReq{
 		{
@@ -287,6 +246,11 @@ func (h *SummariesHandler) GetSummaries(c *fiber.Ctx) error {
 
 		total_data = total
 		summariesDataReturn = *summariesData
+
+		// if data is nil, return empty array so the response will be an empty array and not null
+		if summariesDataReturn == nil {
+			summariesDataReturn = []models.MeetingSummaries{}
+		}
 
 		return nil, fiber.StatusOK
 	})

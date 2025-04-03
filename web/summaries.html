@@ -22,24 +22,17 @@
                 </div>
             </div>
             
-            <div class="d-flex align-items-center">
-                <a href="/" class="btn btn-outline-primary me-2">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <a href="/" class="btn btn-outline-primary">
                     <i class="fas fa-list-alt me-1"></i> + New Record
                 </a>
-                <button class="btn btn-outline-danger" id="logoutBtn" data-bs-toggle="modal" data-bs-target="#createTrainRoomModal">Logout</button>
+                <button class="btn btn-outline-success" id="addGroupSummaries">+ Group Summaries</button>
+                <button class="btn btn-outline-danger" id="logoutBtn">Logout</button>
             </div>
         </div>
-        
-        <!-- Information create advance summary will deducted 5 token -->
-        <!-- <div class="alert alert-warning mt-2" role="alert">
-            ⚠️ Creating a "<b>Dating App Training Room</b>" will <b>deduct 10 tokens</b> from your balance.<br>
-            🚨 If the room is still active (not closed), your <b>daily token reset is limited to 5 instead of 15</b>.
-        </div> -->
-        
-        
     
         <!-- Tabs for Room -->
-        <div class="tab-buttons mb-3">
+        <div class="tab-buttons mb-3 mt-3">
             <div class="row g-2 align-items-center">
         
                 <!-- Dropdown Filter -->
@@ -62,7 +55,7 @@
         
                 <!-- Search Input -->
                 <div class="col-6 col-md-auto">
-                    <input type="text" id="summariesSearch" class="form-control form-control-sm" placeholder="Search Data...">
+                    <input type="text" id="summariesSearch" class="form-control form-control-sm" style="font-size: 0.75rem; height: 30px;" placeholder="Search Room...">
                 </div>
             </div>
         </div>
@@ -190,9 +183,126 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="card-footer bg-white border-top-0 text-end">
+                        <button class="btn btn-outline-primary btn-sm copySummaryBtn">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm ms-2 downloadSummaryBtn">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Modal Add Group Summaries -->
+    <div class="modal fade" id="addGroupSummariesModal" tabindex="-1" aria-labelledby="addGroupSummariesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addGroupSummariesModalLabel">Add Group Summary</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+                <div class="alert alert-info text-center p-3 rounded">
+                    <p class="mb-0">
+                        <strong>Note:</strong> You can select a maximum of <strong>5 summaries</strong> to ensure optimal results. 
+                        Additionally, this feature will deduct <strong>5 credit tokens</strong> from your balance.
+                    </p>
+                </div>
+
+                <strong>📢 Choose your record to group summaries. </strong> <br>
+
+                <div class="col-6 col-md-auto">
+                <input type="text" id="groupSummariesSearch" class="form-control form-control-sm" placeholder="Search Data...">
+                </div>
+
+                <hr>
+
+                <div>
+                <p><strong>Selected Data:</strong></p>
+                </div>
+
+                <ul class="list-group" id="selectedSummary"></ul>
+                
+                <hr>
+
+                <!-- Example scrollable content -->
+                <p><strong>Select Your Summary Data:</strong></p>
+                <ul class="list-group" id="groupSummariesList">
+                
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="confirmaddGroupBtn">Summarize</button>
+            </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Modal RESULT Add Group Summaries -->
+    <div class="modal fade" id="resultGroupSummariesModal" tabindex="-1" aria-labelledby="resultGroupSummariesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resultGroupSummariesModalLabel">Grouping Summaries Result</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-success text-white rounded-pill px-3 py-1 me-2">Overview</div>
+                            <div class="flex-grow-1 border-bottom"></div>
+                        </div>
+                        <div class="arkdown-body p-3">
+                            <md id="resultOverviewSummariesGroupData"></md>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-success text-white rounded-pill px-3 py-1 me-2">Meeting Summaries</div>
+                            <div class="flex-grow-1 border-bottom"></div>
+                        </div>
+                        <div class="markdown-body p-3">
+                            <md id="resultMeetingSummariesGroupData"></md>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-success text-white rounded-pill px-3 py-1 me-2">Next Steps</div>
+                            <div class="flex-grow-1 border-bottom"></div>
+                        </div>
+                        <div class="markdown-body p-3">
+                            <md id="resultNextStepSummariesGroupData"></md>
+                        </div>
+                    </div>
+
+                    <div class="card-footer bg-white border-top-0 text-end">
+                        <button class="btn btn-outline-primary btn-sm copySummaryBtn">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm ms-2 downloadSummaryBtn">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveGroupSummariesResultBtn">Save To My Account</button>
+
                 </div>
             </div>
         </div>
@@ -202,338 +312,6 @@
     {{ template "components/_loading" . }}
     {{ template "components/_modal-infor" . }}
 
-<script>
-
-    let BASE_SUMMARIES_URL = '/api/summaries'
-    let SEARCH_TIMEOUT = null
-    let SEARCH_SUMMARIES = ''
-    let FILTER_SUMMARIES = 'newest'
-    let PAGE = 1 
-    let PER_PAGE = 5
-
-    async function changePage(page, per_page){
-        PAGE = page
-        PER_PAGE = per_page
-        loadSummaries()
-    }
-
-    async function updatePagination(pagination) {
-        // structure of pagination object
-        // pagination = {
-        //     current_page: 1,
-        //     total_page: 1,
-        //     total_data: 1,
-        //     per_page: 1
-        // } 
-
-        const paginationContainer = $('.pagination')
-        paginationContainer.empty()
-
-        const {current_page, total_page, total_data, per_page} = pagination
-        const rangePageShow = 1
-
-        // prviouse buttom
-        paginationContainer.append(`
-            <li class="page-item ${current_page === 1 ? 'disabled' : ''}">
-                <button class="page-link" onclick="changePage(${current_page - 1}, ${PER_PAGE})" ${pagination.current_page === 1 ? 'disabled' : ''}>Previous</button>
-            </li>
-        `)
-
-        // Tambahkan halaman pertama
-        if (current_page > rangePageShow + 1) {
-            paginationContainer.append(`
-                <li class="page-item">
-                    <button class="page-link" onclick="changePage(1, ${PER_PAGE})">1</button>
-                </li>
-                <li class="page-item disabled">
-                    <span class="page-link">...</span>
-                </li>
-            `);
-        }
-
-        // Tambahkan halaman di sekitar halaman aktif
-        const start = Math.max(1, current_page - rangePageShow);
-        const end = Math.min(total_page, current_page + rangePageShow);
-
-        for (let i = start; i <= end; i++) {
-            paginationContainer.append(`
-                <li class="page-item ${current_page === i ? 'active' : ''}">
-                    <button class="page-link" onclick="changePage(${i},  ${PER_PAGE})">${i}</button>
-                </li>
-            `);
-        }
-
-        // Tambahkan halaman terakhir
-        if (current_page < total_page - rangePageShow) {
-            paginationContainer.append(`
-                <li class="page-item disabled">
-                    <span class="page-link">...</span>
-                </li>
-                <li class="page-item">
-                    <button class="page-link" onclick="changePage(${total_page}, ${PER_PAGE})">${total_page}</button>
-                </li>
-            `);
-        }
-
-        // next button
-        paginationContainer.append(`
-            <li class="page-item ${current_page === total_page? 'disabled' : ''}">
-                <button class="page-link" onclick="changePage(${current_page + 1}, ${PER_PAGE})" ${current_page === total_page ? 'disabled' : ''}>Next</button>
-            </li>
-        `)
-
-    }
-
-
-    // edit modal function and request to server
-    async function openEditModal(id, name, description) {
-        const editModal = new bootstrap.Modal($('#editSummariesModal'))
-        
-        $('#summariesNameEdit').val(name)
-        $('#summariesDescriptionEdit').val(description)
-        editModal.show()
-
-        // edit room modal 
-        $('#editSummariesBtn').off('click').click(async function() {
-            event.preventDefault()
-
-            const new_name = $('#summariesNameEdit').val()
-            const new_description = $('#summariesDescriptionEdit').val().replace(/\n/g, '<br>');
-            
-            const dataReq = JSON.stringify({
-                name: new_name,
-                description: new_description
-            })
-            editModal.hide()
-            showLoader()
-
-            try {
-                const URL_EDIT = BASE_SUMMARIES_URL + `/${id}`
-
-                const resp = await fetch(URL_EDIT, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: dataReq
-                })
-                const response = await resp.json()
-
-                if(response.error) throw new Error('Failed to edit summaries data' + ': ' + response.message)
-                else {
-                    await loadSummaries()
-                    showInfoModal(`Success edit summaries data`, 'Edit Summaries Data Success')
-                }
-
-            } catch(e) {
-                showInfoModal(e.message, 'Edit Room Failed')
-            } finally {
-                hideLoader()
-            }
-        })
-    }
-
-    // delete modal function and request to server
-    async function openDeleteModal(id, name, description) {
-        const deleteModal = new bootstrap.Modal($('#deleteSummariesModal'))
-        $('#summariesNameDeleteModal').text(name)
-        $('#summariesDescriptionDeleteModal').text(description)
-        deleteModal.show()
-
-        $('#confirmDeleteBtn').one('click', async function() {
-            event.preventDefault()
-
-            deleteModal.hide()
-            showLoader()
-
-            try {
-                const URL_DELETE = BASE_SUMMARIES_URL + `/${id}`
-
-                const resp = await fetch(URL_DELETE, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                const response = await resp.json()
-
-                if (response.error) throw new Error('Failed to delete summary data with name ' + name + ': ' + response.message)
-                else {
-                    hideLoader()
-
-                    await loadSummaries()
-
-                    showInfoModal(`Success delete summary data with name ${name}`, 'Delete Room Success')
-                }
-
-            } catch(e) {
-                showInfoModal(e.message, 'Delete Summary Data Failed')
-                hideLoader()
-            }
-        })
-    }
-
-    // open modal detail summary
-    async function openDetailModal(id, name, description, simple_summary, comprehensive_summary) {
-        const detailModal = new bootstrap.Modal($('#detailSummariesModal'))
-        $('#summariesNameDetailModal').text(name)
-        $('#summariesDescriptionDetailModal').text(description)
-        detailModal.show()
-
-        // Populate TLDR
-        $('#tldrContent').html(`<p>${simple_summary}</p>`)
-
-        // Render markdown for comprehensive summary
-        $('#comprehensiveContent').html(marked.parse(comprehensive_summary))
-
-    }
-
-    // load summaries data on dashboard
-    async function loadSummaries() {
-        let LOAD_DATA_BASE_URL = BASE_SUMMARIES_URL + `?search=${SEARCH_SUMMARIES}&order_by=${FILTER_SUMMARIES}&page=${PAGE}&per_page=${PER_PAGE}`
-
-        showLoader()
-
-        try {
-            const resp = await fetch(LOAD_DATA_BASE_URL, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-            })
-            const response = await resp.json()
-
-            if(response.error) throw new Error(response.message)
-            else {
-
-                const summariesList = $('#roomList')
-                summariesList.empty()
-
-                const summariesData = response.data.summaries 
-                const paginationData = response.data.pagination
-
-                if (summariesData.length === 0) summariesList.append(`<p class="text-muted">No Summaries Recorded</p>`)
-                else {
-            
-                    summariesData.forEach(summary => {
-
-                        const create_date = new Date(summary.created_at).toLocaleDateString('en-US', { 
-                            year: 'numeric', month: 'long', day: 'numeric' 
-                        })
-                        const description = summary.description.replace(/<br>/g, '\n')
-
-                        let comprehensiveEscaped = JSON.stringify(summary.comprehensive_summaries).replace(/"/g, '&quot;'); 
-
-                        let summaryCard = `
-                            <div class="room-card text-justify" id="summary-${summary.id}">
-                                <div class="card-body">
-                                    <h5 class="fw-bold text-primary mb-2">${summary.name}</h5>
-                                    <p class="text-muted mb-3">
-                                        <strong>Description:</strong><br>
-                                        <span style="text-align: justify;">${description}</span>
-                                    </p>
-                                    <p class="text-muted mb-1">
-                                        <strong>Created At:</strong> 
-                                        <span class="fw-bold">${create_date}</span>
-                                    </p>
-                                </div>
-                                <div class="card-footer room-actions">
-                                    <button class="btn btn-sm btn-success" onclick="openDetailModal(${summary.id}, '${summary.name}', '${description}', '${summary.simple_summaries}', ${comprehensiveEscaped})">Detail</button>
-
-                                    <button class="btn btn-sm btn-warning" onclick="openEditModal(${summary.id}, '${summary.name}', '${description}')">Edit</button>
-
-                                    <button class="btn btn-sm btn-danger" onclick="openDeleteModal(${summary.id},'${summary.name}', '${description}')">Delete</button>
-                                </div>
-                            </div>
-                        `
-
-                        summariesList.append(summaryCard)
-
-                    })
-
-                }
-                updatePagination(paginationData)
-            }
-
-        } catch(e) {
-            showInfoModal('Failed to Load Summaries: ' + e.message, 'Failed to load summaries')
-        } finally {
-            hideLoader()
-        }
-
-    }
-
-    $(document).ready(async function() {
-        hideLoader()
-
-        loadSummaries()
-
-        // ============= SUMMARIES FILTER
-
-        // filter show room olderst/ newest
-        $('#summariesFilter').on('change', async function() {
-            SEARCH_SUMMARIES = $('#summariesSearch').val().trim()
-            FILTER_SUMMARIES = $('#summariesFilter').val()
-            
-            loadSummaries()
-        })
-
-        // filter show room per page
-        $('#summariesShowFilter').on('change', async function() {
-            SEARCH_SUMMARIES = $('#summariesSearch').val().trim()
-            FILTER_SUMMARIES = $('#summariesFilter').val()
-            PER_PAGE = parseInt($('#summariesShowFilter').val())
-            PAGE = 1
-
-            loadSummaries()
-        })
-
-        // search room
-        $('#summariesSearch').on('input', async function() {
-            SEARCH_SUMMARIES = $('#summariesSearch').val().trim()
-            FILTER_SUMMARIES = $('#summariesFilter').val()
-
-            clearTimeout(SEARCH_TIMEOUT)
-
-            SEARCH_TIMEOUT = setTimeout(async function() {
-                PAGE = 1 // automatic set page to first page if using search filter
-                loadSummaries()
-            }, 1500)
-
-        })
-
-        // logout
-        $('#logoutBtn').click(async function() {
-            event.preventDefault()
-
-            showLoader()
-
-            try {
-                const resp = await fetch("/api/logout", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                })
-                const response = await resp.json()
-
-                if (!response.error) {
-                    hideLoader()
-                    // setup for sso, just throw to dashboard page for now, because on backend will redirect to SSO dashboard page
-                    window.location.href = '/'
-
-                } else {
-                    hideLoader()
-                    showInfoModal('Logout Failed', 'Failed to logout')
-                }
-
-            } catch(e) {
-                hideLoader()
-                showInfoModal('Logout Failed', 'Failed to logout')
-            } 
-            
-        })
-    })
-</script>
+<script src="/web/js/summaries-pages.js"></script>
 </body>
 <html>

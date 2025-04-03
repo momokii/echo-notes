@@ -22,7 +22,9 @@ CREATE TABLE meeting_grouping_summaries (
 	name VARCHAR(255) NOT NULL, 
 	description TEXT NOT NULL, 
 	user_id INT NOT NULL REFERENCES users(id),
-	grouping_summaries TEXT NOT NULL,
+	overview TEXT NOT NULL,
+	meeting_summaries TEXT NOT NULL,
+	next_steps TEXT NOT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
