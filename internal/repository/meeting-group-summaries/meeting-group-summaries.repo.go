@@ -13,7 +13,6 @@ func NewMeetingGroupSummaries() *MeetingGroupSummaries {
 	return &MeetingGroupSummaries{}
 }
 
-// TODO: Implement Find function (test needed)
 func (m *MeetingGroupSummaries) Find(tx *sql.Tx, pagination models.PaginationFiltering, userId int) (*[]models.MeetingGroupingSummary, int, error) {
 	var meetingGroupSummaries []models.MeetingGroupingSummary
 
@@ -35,6 +34,15 @@ func (m *MeetingGroupSummaries) Find(tx *sql.Tx, pagination models.PaginationFil
 	total_query += add_query
 	idxParam++
 	paramData = append(paramData, userId)
+
+	// check if pagination using search query
+	if pagination.Search != "" {
+		add_query := " AND (name ILIKE '%' || $" + fmt.Sprint(idxParam) + " || '%' OR description ILIKE '%' || $" + fmt.Sprint(idxParam) + " || '%')"
+		query += add_query
+		total_query += add_query
+		idxParam++
+		paramData = append(paramData, pagination.Search)
+	}
 
 	// count data
 	if err := tx.QueryRow(total_query, paramData...).Scan(&total); err != nil {
@@ -76,7 +84,6 @@ func (m *MeetingGroupSummaries) Find(tx *sql.Tx, pagination models.PaginationFil
 	return &meetingGroupSummaries, total, nil
 }
 
-// TODO: Implement FindById function (test needed)
 func (m *MeetingGroupSummaries) FindById(tx *sql.Tx, id, userId int) (*models.MeetingGroupingSummary, error) {
 	var meetingGroupSummary models.MeetingGroupingSummary
 
@@ -119,7 +126,6 @@ func (m *MeetingGroupSummaries) Create(tx *sql.Tx, meetingGroupSummariesData mod
 	return nil
 }
 
-// TODO: Implement Update function (test needed)
 func (m *MeetingGroupSummaries) Update(tx *sql.Tx, meetingGroupSummariesData models.MeetingGroupingSummary) error {
 
 	query := "UPDATE meeting_grouping_summaries SET name = $1, description = $2 WHERE id = $3 AND user_id = $4"
@@ -139,7 +145,6 @@ func (m *MeetingGroupSummaries) Update(tx *sql.Tx, meetingGroupSummariesData mod
 	return nil
 }
 
-// TODO: Implement Delete function (test needed)
 func (m *MeetingGroupSummaries) Delete(tx *sql.Tx, meetingGroupSummariesData models.MeetingGroupingSummary) error {
 
 	query := "DELETE FROM meeting_grouping_summaries WHERE id = $1 AND user_id = $2"

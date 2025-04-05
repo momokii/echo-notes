@@ -97,13 +97,6 @@ func main() {
 	api.Post("/audio/summaries", sessionService.IsAuth, summariesHandler.SummariesData)
 	api.Post("/audio/summaries/cost", sessionService.IsAuth, summariesHandler.SummariesReduceUserToken)
 
-	// summaries api
-	api.Get("/summaries", sessionService.IsAuth, summariesHandler.GetSummaries)
-	api.Get("/summaries/:id", sessionService.IsAuth, summariesHandler.GetOneSummary)
-	api.Post("/summaries", sessionService.IsAuth, summariesHandler.SaveSummaries)
-	api.Patch("/summaries/:id", sessionService.IsAuth, summariesHandler.EditSummaries)
-	api.Delete("/summaries/:id", sessionService.IsAuth, summariesHandler.DeleteSummaries)
-
 	// grouping summaries api
 	api.Get("/summaries/groups", sessionService.IsAuth, summariesGroupHandler.GetGroupSummaries)
 	api.Post("/summaries/groups/cost", sessionService.IsAuth, summariesGroupHandler.SummariesGroupReduceUserToken)
@@ -112,6 +105,13 @@ func main() {
 	api.Post("/summaries/groups", sessionService.IsAuth, summariesGroupHandler.SaveGroupSummaries)
 	api.Patch("/summaries/groups/:id", sessionService.IsAuth, summariesGroupHandler.UpdateGroupSummaries)
 	api.Delete("/summaries/groups/:id", sessionService.IsAuth, summariesGroupHandler.DeleteGroupSummaries)
+
+	// summaries api
+	api.Get("/summaries", sessionService.IsAuth, summariesHandler.GetSummaries)
+	api.Get("/summaries/:id", sessionService.IsAuth, summariesHandler.GetOneSummary)
+	api.Post("/summaries", sessionService.IsAuth, summariesHandler.SaveSummaries)
+	api.Patch("/summaries/:id", sessionService.IsAuth, summariesHandler.EditSummaries)
+	api.Delete("/summaries/:id", sessionService.IsAuth, summariesHandler.DeleteSummaries)
 
 	if DEVMODE != "development" && DEVMODE != "production" {
 		log.Println("APP_ENV not set")

@@ -183,12 +183,11 @@ func (h *SummariesGroupHandler) CreateGroupSummariesDataLLM(c *fiber.Ctx) error 
 	})
 }
 
-// TODO: Implement GetGroupSummariesData function (test needed)
 func (h *SummariesGroupHandler) GetGroupSummaries(c *fiber.Ctx) error {
 	var summariesGroupData []models.MeetingGroupingSummary
 	total_data := 0
 
-	user_session := c.Locals("user").(*sso_models.UserSession)
+	user_session := c.Locals("user").(sso_models.UserSession)
 	if user_session.Id == 0 {
 		return utils.ResponseMessage(c, fiber.StatusUnauthorized, "unauthorized")
 	}
@@ -306,7 +305,6 @@ func (h *SummariesGroupHandler) SaveGroupSummaries(c *fiber.Ctx) error {
 	return utils.ResponseMessage(c, fiber.StatusOK, "success save group summaries data")
 }
 
-// TODO: Implement UpdateGroupSummaries function (test needed)
 func (h *SummariesGroupHandler) UpdateGroupSummaries(c *fiber.Ctx) error {
 
 	user_session := c.Locals("user").(sso_models.UserSession)
@@ -357,7 +355,6 @@ func (h *SummariesGroupHandler) UpdateGroupSummaries(c *fiber.Ctx) error {
 	return utils.ResponseMessage(c, fiber.StatusOK, "success update group summaries data")
 }
 
-// TODO: Implement DeleteGroupSummaries function (test needed)
 func (h *SummariesGroupHandler) DeleteGroupSummaries(c *fiber.Ctx) error {
 
 	user_session := c.Locals("user").(sso_models.UserSession)

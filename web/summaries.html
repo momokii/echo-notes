@@ -34,6 +34,9 @@
         <!-- Tabs for Room -->
         <div class="tab-buttons mb-3 mt-3">
             <div class="row g-2 align-items-center">
+                <div class="col-6 col-md-auto">
+                    <button class="btn btn-outline-dark" id="myGroupSummaries">My Group Summaries</button>
+                </div>
         
                 <!-- Dropdown Filter -->
                 <div class="col-6 col-md-auto ms-md-auto">
@@ -108,7 +111,7 @@
                             <label for="summariesDescriptionEdit" class="form-label">Summaries description</label>
                             <input type="text" class="form-control" id="summariesDescriptionEdit" placeholder="Enter summaries data description" required maxlength="144" minlength="1">
                         </div>
-                        <button type="submit" id="editSummariesBtn" class="btn btn-success">Edit Summaries Data</button>
+                        <button id="editSummariesBtn" class="btn btn-success">Edit Summaries Data</button>
                     </form>                    
                 </div>
             </div>
@@ -126,7 +129,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Are you sure you want to delete this room?</p>
+                    <p>Are you sure you want to delete this data?</p>
                     <p>Summaries Name: <strong id="summariesNameDeleteModal"></strong></p>
                     <p>Summaries Description: </p>
                     <p><strong id="summariesDescriptionDeleteModal"></strong></p>
@@ -303,6 +306,104 @@
                     <button type="button" class="btn btn-secondary">Close</button>
                     <button type="button" class="btn btn-primary" id="saveGroupSummariesResultBtn">Save To My Account</button>
 
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Modal SHOW Grouping Summaries User Data -->
+    <div class="modal fade" id="GroupSummariesDataModal" tabindex="-1" aria-labelledby="addGroupSummariesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addGroupSummariesModalLabel">My Group Summary Data</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+
+                    <p><strong>Search:</strong></p>
+                    <div class="col-6 col-md-auto">
+                        <input type="text" id="groupSummariesDataSearch" class="form-control form-control-sm" placeholder="Search Data...">
+                    </div>
+
+                    <hr>
+
+                    <p><strong>Group Summary Data:</strong></p>
+                    <ul class="list-group" id="groupSummariesDataList"></ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal Detail GROUP Summary Information -->
+    <div class="modal fade" id="detailGroupSummariesModal" tabindex="-1" aria-labelledby="detailSummariesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detailSummariesModalLabel">Detail Group Summary</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <p><strong>Group Summaries Name:</strong></p>
+                        <p id="groupSummariesNameDetailModal" class="text-primary"></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <p><strong>Group Summaries Description:</strong></p>
+                        <p id="groupSummariesDescriptionDetailModal" class="text-muted"></p>
+                    </div>
+
+                    <div class="card-body">
+                        <!-- Overview Summary -->
+                        <div class="overviewGroup-section mb-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-primary text-white rounded-pill px-3 py-1 me-2">Overview</span>
+                                <div class="flex-grow-1 border-bottom"></div>
+                            </div>
+                            <div class="overviewGroup-content p-3 bg-light rounded" id="overviewGroupContent">
+                            </div>
+                        </div>
+
+                        <!-- Meeting Summaries Summary -->
+                        <div class="meetingSummariesGroup-section">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-success text-white rounded-pill px-3 py-1 me-2">Meeting Summaries</span>
+                                <div class="flex-grow-1 border-bottom"></div>
+                            </div>
+                            <div class="meetingSummariesGroup markdown-body p-3 bg-light rounded" id="meetingSummariesGroupContent">
+                            </div>
+                        </div>
+
+                        <!-- Overview Summary -->
+                        <div class="nextStepGroup-section mb-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-dark text-white rounded-pill px-3 py-1 me-2">Next Steps</span>
+                                <div class="flex-grow-1 border-bottom"></div>
+                            </div>
+                            <div class="nextStepGroup-content p-3 bg-light rounded" id="nextStepGroupContent">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer bg-white border-top-0 text-end">
+                        <button class="btn btn-outline-primary btn-sm copySummaryBtn">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm ms-2 downloadSummaryBtn">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
